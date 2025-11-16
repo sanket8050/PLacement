@@ -1,0 +1,2230 @@
+# 📚 COMPREHENSIVE SQL INTERVIEW NOTES
+
+## 1) DBMS vs RDBMS
+
+### DBMS (Database Management System)
+A **DBMS** is software that manages data but doesn't enforce relationships between data elements.
+
+**Characteristics:**
+- Stores data in **files** (not tables)
+- **No relationships** between different data entities
+- Data is stored in a **hierarchical** or **navigational** form
+- **Slower performance** for complex queries
+- **More redundancy** (duplicate data)
+- Limited **security features**
+
+**Example Scenario:**
+Imagine a college storing student information:
+- File1.txt: Student names
+- File2.txt: Student addresses
+- File3.txt: Student phone numbers
+
+**Problem:** If you want to find all information about "John," you need to search multiple files manually.
+
+**Examples of DBMS:** XML, Microsoft Access (in file mode)
+
+---
+
+### RDBMS (Relational Database Management System)
+An **RDBMS** organizes data into **tables** (relations) with rows and columns, and maintains relationships between tables.
+
+**Characteristics:**
+- Data stored in **tables** (rows + columns)
+- Tables are **related** using keys (Primary Key, Foreign Key)
+- **Faster queries** using indexing
+- **Less redundancy** through normalization
+- Better **security** (user permissions, access control)
+- Supports **ACID properties** (Atomicity, Consistency, Isolation, Durability)
+
+**Example:**
+
+**Students Table:**
+| student_id | name    | age | department_id |
+|------------|---------|-----|---------------|
+| 1          | John    | 20  | 101           |
+| 2          | Sarah   | 22  | 102           |
+| 3          | Mike    | 21  | 101           |
+
+**Departments Table:**
+| department_id | department_name |
+|---------------|-----------------|
+| 101           | Computer Science|
+| 102           | Mathematics     |
+
+Here, `department_id` in Students table is a **Foreign Key** that references `department_id` in Departments table.
+
+**Examples of RDBMS:** MySQL, PostgreSQL, Oracle, SQL Server, SQLite
+
+---
+
+## 2) Primary Key vs Foreign Key
+
+### Primary Key (PK)
+A **Primary Key** uniquely identifies each record in a table.
+
+**Rules:**
+- Must contain **UNIQUE** values
+- **Cannot be NULL**
+- Only **ONE** primary key per table
+- Can be a **single column** or **combination of columns** (composite key)
+
+**Example 1: Single Column Primary Key**
+```sql
+CREATE TABLE employees (
+    emp_id INT PRIMARY KEY,
+    emp_name VARCHAR(50),
+    salary DECIMAL(10, 2)
+);
+
+INSERT INTO employees VALUES (1, 'Alice', 50000);
+INSERT INTO employees VALUES (2, 'Bob', 60000);
+-- INSERT INTO employees VALUES (1, 'Charlie', 55000); -- ERROR: Duplicate primary key
+-- INSERT INTO employees VALUES (NULL, 'David', 52000); -- ERROR: NULL not allowed
+```
+
+**Example 2: Composite Primary Key**
+```sql
+CREATE TABLE enrollments (
+    student_id INT,
+    course_id INT,
+    enrollment_date DATE,
+    PRIMARY KEY (student_id, course_id)
+);
+
+-- This combination is unique
+INSERT INTO enrollments VALUES (1, 101, '2024-01-15');
+INSERT INTO enrollments VALUES (1, 102, '2024-01-16'); -- OK: Different course
+INSERT INTO enrollments VALUES (2, 101, '2024-01-17'); -- OK: Different student
+-- INSERT INTO enrollments VALUES (1, 101, '2024-02-01'); -- ERROR: Duplicate combination
+```
+
+---
+
+### Foreign Key (FK)
+A **Foreign Key** creates a link between two tables by referencing the Primary Key of another table.
+
+**Purpose:**
+- Maintains **referential integrity**
+- Prevents actions that would destroy links between tables
+- Ensures data consistency
+
+**Example:**
+
+```sql
+-- Parent Table
+CREATE TABLE departments (
+    dept_id INT PRIMARY KEY,
+    dept_name VARCHAR(50)
+);
+
+-- Child Table
+CREATE TABLE employees (
+    emp_id INT PRIMARY KEY,
+    emp_name VARCHAR(50),
+    dept_id INT,
+    FOREIGN KEY (dept_id) REFERENCES departments(dept_id)
+);
+
+INSERT INTO departments VALUES (1, 'HR');
+INSERT INTO departments VALUES (2, 'IT');
+
+INSERT INTO employees VALUES (101, 'Alice', 1); -- OK: dept_id 1 exists
+INSERT INTO employees VALUES (102, 'Bob', 2);   -- OK: dept_id 2 exists
+-- INSERT INTO employees VALUES (103, 'Charlie', 5); -- ERROR: dept_id 5 doesn't exist
+```
+
+**Cascading Actions:**
+```sql
+CREATE TABLE employees (
+    emp_id INT PRIMARY KEY,
+    emp_name VARCHAR(50),
+    dept_id INT,
+    FOREIGN KEY (dept_id) REFERENCES departments(dept_id)
+        ON DELETE CASCADE  -- If department deleted, delete all employees
+        ON UPDATE CASCADE  -- If dept_id updated, update in employees too
+);
+```
+
+---
+
+## 3) Constraints in SQL
+
+Constraints are **rules** applied to table columns to ensure data accuracy and integrity.
+
+### NOT NULL
+Ensures a column **cannot have NULL values**.
+
+```sql
+CREATE TABLE students (
+    student_id INT PRIMARY KEY,
+    name VARCHAR(50) NOT NULL,
+    email VARCHAR(50)
+);
+
+INSERT INTO students VALUES (1, 'John', 'john@email.com'); -- OK
+-- INSERT INTO students VALUES (2, NULL, 'jane@email.com'); -- ERROR: name cannot be NULL
+INSERT INTO students VALUES (3, 'Mike', NULL); -- OK: email can be NULL
+```
+
+---
+
+### UNIQUE
+Ensures all values in a column are **different**.
+
+```sql
+CREATE TABLE users (
+    user_id INT PRIMARY KEY,
+    username VARCHAR(30) UNIQUE,
+    email VARCHAR(50) UNIQUE
+);
+
+INSERT INTO users VALUES (1, 'john_doe', 'john@email.com'); -- OK
+INSERT INTO users VALUES (2, 'jane_doe', 'jane@email.com'); -- OK
+-- INSERT INTO users VALUES (3, 'john_doe', 'different@email.com'); -- ERROR: username duplicate
+-- INSERT INTO users VALUES (4, 'bob', 'john@email.com'); -- ERROR: email duplicate
+```
+
+---
+
+### CHECK
+Limits the **range of values** that can be inserted.
+
+```sql
+CREATE TABLE employees (
+    emp_id INT PRIMARY KEY,
+    name VARCHAR(50),
+    age INT CHECK (age >= 18 AND age <= 65),
+    salary DECIMAL(10,2) CHECK (salary > 0),
+    gender CHAR(1) CHECK (gender IN ('M', 'F', 'O'))
+);
+
+INSERT INTO employees VALUES (1, 'Alice', 25, 50000, 'F'); -- OK
+-- INSERT INTO employees VALUES (2, 'Bob', 17, 30000, 'M'); -- ERROR: age < 18
+-- INSERT INTO employees VALUES (3, 'Charlie', 30, -5000, 'M'); -- ERROR: salary <= 0
+-- INSERT INTO employees VALUES (4, 'Diana', 28, 40000, 'X'); -- ERROR: invalid gender
+```
+
+---
+
+### DEFAULT
+Assigns a **default value** when no value is provided.
+
+```sql
+CREATE TABLE orders (
+    order_id INT PRIMARY KEY,
+    product_name VARCHAR(50),
+    quantity INT DEFAULT 1,
+    order_date DATE DEFAULT CURRENT_DATE,
+    status VARCHAR(20) DEFAULT 'Pending'
+);
+
+INSERT INTO orders (order_id, product_name) VALUES (1, 'Laptop');
+-- Result: order_id=1, product_name='Laptop', quantity=1, order_date=today, status='Pending'
+
+INSERT INTO orders VALUES (2, 'Mouse', 5, '2024-10-15', 'Shipped');
+-- All values provided explicitly
+```
+
+---
+
+### PRIMARY KEY
+Combines **NOT NULL** and **UNIQUE**. Uniquely identifies each row.
+
+```sql
+CREATE TABLE books (
+    book_id INT PRIMARY KEY,
+    title VARCHAR(100),
+    author VARCHAR(50)
+);
+```
+
+---
+
+### FOREIGN KEY
+Creates relationship between tables (already covered above).
+
+---
+
+## 4) DDL vs DML vs DCL vs TCL
+
+### DDL (Data Definition Language)
+Deals with **database structure** (schema).
+
+**Commands:**
+- **CREATE**: Create new table/database
+- **ALTER**: Modify existing structure
+- **DROP**: Delete table/database
+- **TRUNCATE**: Remove all rows (keep structure)
+- **RENAME**: Rename table
+
+**Examples:**
+
+```sql
+-- CREATE
+CREATE TABLE products (
+    product_id INT PRIMARY KEY,
+    product_name VARCHAR(50),
+    price DECIMAL(10,2)
+);
+
+-- ALTER - Add column
+ALTER TABLE products ADD COLUMN category VARCHAR(30);
+
+-- ALTER - Modify column
+ALTER TABLE products MODIFY COLUMN price DECIMAL(12,2);
+
+-- ALTER - Drop column
+ALTER TABLE products DROP COLUMN category;
+
+-- RENAME
+RENAME TABLE products TO items;
+
+-- TRUNCATE (removes all data, keeps structure)
+TRUNCATE TABLE items;
+
+-- DROP (removes table completely)
+DROP TABLE items;
+```
+
+---
+
+### DML (Data Manipulation Language)
+Deals with **data inside tables**.
+
+**Commands:**
+- **INSERT**: Add new rows
+- **UPDATE**: Modify existing rows
+- **DELETE**: Remove rows
+- **SELECT**: Retrieve data
+
+**Examples:**
+
+```sql
+-- INSERT
+INSERT INTO products (product_id, product_name, price) 
+VALUES (1, 'Laptop', 50000);
+
+INSERT INTO products VALUES (2, 'Mouse', 500), (3, 'Keyboard', 1500);
+
+-- UPDATE
+UPDATE products SET price = 52000 WHERE product_id = 1;
+
+UPDATE products SET price = price * 1.1; -- Increase all prices by 10%
+
+-- DELETE
+DELETE FROM products WHERE product_id = 3;
+
+DELETE FROM products WHERE price < 1000;
+
+-- SELECT
+SELECT * FROM products;
+
+SELECT product_name, price FROM products WHERE price > 5000;
+```
+
+---
+
+### DCL (Data Control Language)
+Manages **user permissions**.
+
+**Commands:**
+- **GRANT**: Give permissions
+- **REVOKE**: Remove permissions
+
+```sql
+-- Grant SELECT permission to user 'john'
+GRANT SELECT ON products TO john;
+
+-- Grant all permissions
+GRANT ALL PRIVILEGES ON database_name.* TO 'username'@'localhost';
+
+-- Revoke permissions
+REVOKE SELECT ON products FROM john;
+```
+
+---
+
+### TCL (Transaction Control Language)
+Manages **database transactions**.
+
+**Commands:**
+- **COMMIT**: Save changes permanently
+- **ROLLBACK**: Undo changes
+- **SAVEPOINT**: Create a point to rollback to
+
+```sql
+START TRANSACTION;
+
+INSERT INTO products VALUES (4, 'Monitor', 15000);
+SAVEPOINT sp1;
+
+UPDATE products SET price = 16000 WHERE product_id = 4;
+SAVEPOINT sp2;
+
+DELETE FROM products WHERE product_id = 1;
+
+-- Undo last DELETE
+ROLLBACK TO sp2;
+
+-- Save all changes
+COMMIT;
+```
+
+---
+
+## 5) DELETE vs TRUNCATE vs DROP
+
+### DELETE
+- Removes **specific rows** based on condition
+- Can use **WHERE** clause
+- **Can be rolled back** (if in transaction)
+- **Slower** (logs each row deletion)
+- **Triggers are activated**
+
+```sql
+-- Delete specific rows
+DELETE FROM employees WHERE dept_id = 3;
+
+-- Delete all rows (but keep table structure)
+DELETE FROM employees;
+
+-- Using transaction
+BEGIN TRANSACTION;
+DELETE FROM employees WHERE salary < 30000;
+ROLLBACK; -- Undo deletion
+```
+
+---
+
+### TRUNCATE
+- Removes **ALL rows** at once
+- **Cannot use WHERE** clause
+- **Cannot be rolled back** (in most databases)
+- **Faster** than DELETE (doesn't log individual rows)
+- **Resets auto-increment** counter
+- **Triggers NOT activated**
+- Keeps table **structure intact**
+
+```sql
+TRUNCATE TABLE employees;
+-- All rows deleted, table structure remains, auto_increment reset to 1
+```
+
+**Comparison Example:**
+```sql
+-- Table before
+SELECT * FROM test_table;
+-- id | name
+-- 1  | Alice
+-- 2  | Bob
+-- 3  | Charlie
+
+DELETE FROM test_table;
+-- Deletes all rows, next insert will have id = 4
+
+-- vs
+
+TRUNCATE TABLE test_table;
+-- Deletes all rows, next insert will have id = 1 (reset)
+```
+
+---
+
+### DROP
+- Removes **entire table** (structure + data)
+- **Cannot be rolled back**
+- **Frees up storage space**
+- Table **ceases to exist**
+
+```sql
+DROP TABLE employees;
+-- Table is completely removed from database
+
+-- To check if table exists before dropping
+DROP TABLE IF EXISTS employees;
+```
+
+**Summary Comparison:**
+
+| Feature | DELETE | TRUNCATE | DROP |
+|---------|--------|----------|------|
+| Speed | Slow | Fast | Fast |
+| WHERE clause | Yes | No | No |
+| Rollback | Yes | No | No |
+| Structure | Keeps | Keeps | Removes |
+| Data | Removes selected | Removes all | Removes all |
+| Triggers | Activated | Not activated | Not activated |
+| Auto-increment | Not reset | Reset | N/A |
+
+---
+
+## 6) GROUP BY vs ORDER BY
+
+### ORDER BY
+**Sorts** the result set in ascending (ASC) or descending (DESC) order.
+
+```sql
+-- Sample data
+CREATE TABLE employees (
+    emp_id INT,
+    name VARCHAR(50),
+    department VARCHAR(30),
+    salary DECIMAL(10,2)
+);
+
+INSERT INTO employees VALUES
+(1, 'Alice', 'IT', 60000),
+(2, 'Bob', 'HR', 45000),
+(3, 'Charlie', 'IT', 70000),
+(4, 'Diana', 'Sales', 50000),
+(5, 'Eve', 'HR', 48000);
+
+-- Sort by salary (ascending by default)
+SELECT * FROM employees ORDER BY salary;
+-- Result: Bob, Diana, Eve, Alice, Charlie
+
+-- Sort by salary descending
+SELECT * FROM employees ORDER BY salary DESC;
+-- Result: Charlie, Alice, Diana, Eve, Bob
+
+-- Sort by multiple columns
+SELECT * FROM employees ORDER BY department, salary DESC;
+-- Result grouped by department, then sorted by salary within each department
+```
+
+---
+
+### GROUP BY
+**Groups rows** that have the same values in specified columns, typically used with **aggregate functions**.
+
+```sql
+-- Count employees per department
+SELECT department, COUNT(*) as employee_count
+FROM employees
+GROUP BY department;
+-- Result:
+-- HR    | 2
+-- IT    | 2
+-- Sales | 1
+
+-- Average salary per department
+SELECT department, AVG(salary) as avg_salary
+FROM employees
+GROUP BY department;
+-- Result:
+-- HR    | 46500
+-- IT    | 65000
+-- Sales | 50000
+
+-- Total salary per department, sorted by total
+SELECT department, SUM(salary) as total_salary
+FROM employees
+GROUP BY department
+ORDER BY total_salary DESC;
+-- Result:
+-- IT    | 130000
+-- HR    | 93000
+-- Sales | 50000
+```
+
+**Using GROUP BY with Multiple Columns:**
+```sql
+CREATE TABLE sales (
+    product VARCHAR(30),
+    region VARCHAR(20),
+    amount DECIMAL(10,2)
+);
+
+INSERT INTO sales VALUES
+('Laptop', 'North', 50000),
+('Laptop', 'South', 45000),
+('Mouse', 'North', 5000),
+('Mouse', 'South', 4500),
+('Laptop', 'North', 55000);
+
+-- Group by product and region
+SELECT product, region, SUM(amount) as total_sales
+FROM sales
+GROUP BY product, region;
+-- Result:
+-- Laptop | North | 105000
+-- Laptop | South | 45000
+-- Mouse  | North | 5000
+-- Mouse  | South | 4500
+```
+
+---
+
+## 7) WHERE vs HAVING
+
+### WHERE
+- Filters **individual rows** BEFORE grouping
+- Cannot use **aggregate functions** (SUM, AVG, COUNT, etc.)
+- Applied **before GROUP BY**
+
+```sql
+-- Filter employees with salary > 50000
+SELECT * FROM employees 
+WHERE salary > 50000;
+
+-- Filter and then group
+SELECT department, AVG(salary) as avg_salary
+FROM employees
+WHERE salary > 45000  -- Filter rows first
+GROUP BY department;
+-- Only calculates average for employees earning > 45000
+```
+
+---
+
+### HAVING
+- Filters **groups** AFTER grouping
+- **Can use aggregate functions**
+- Applied **after GROUP BY**
+
+```sql
+-- Find departments with average salary > 50000
+SELECT department, AVG(salary) as avg_salary
+FROM employees
+GROUP BY department
+HAVING AVG(salary) > 50000;
+-- Result: Only IT department (avg = 65000)
+
+-- Count employees per department, show only departments with 2+ employees
+SELECT department, COUNT(*) as emp_count
+FROM employees
+GROUP BY department
+HAVING COUNT(*) >= 2;
+-- Result: HR (2), IT (2)
+```
+
+**Combining WHERE and HAVING:**
+```sql
+-- Complex example
+SELECT department, COUNT(*) as emp_count, AVG(salary) as avg_salary
+FROM employees
+WHERE salary > 40000           -- Filter rows first (WHERE)
+GROUP BY department            -- Then group
+HAVING COUNT(*) > 1           -- Filter groups (HAVING)
+ORDER BY avg_salary DESC;      -- Finally sort
+
+-- This finds departments with 2+ employees earning > 40000,
+-- and shows their average salary
+```
+
+**Key Difference Example:**
+```sql
+-- This works (WHERE with regular column)
+SELECT * FROM employees WHERE salary > 50000;
+
+-- This DOESN'T work (WHERE with aggregate function)
+-- SELECT department FROM employees WHERE AVG(salary) > 50000; -- ERROR
+
+-- This works (HAVING with aggregate function)
+SELECT department FROM employees 
+GROUP BY department 
+HAVING AVG(salary) > 50000;
+```
+
+---
+
+## 8) Aggregate Functions
+
+Aggregate functions perform calculations on **multiple rows** and return a **single value**.
+
+### COUNT()
+Counts the number of rows.
+
+```sql
+-- Count all employees
+SELECT COUNT(*) FROM employees;
+-- Result: 5
+
+-- Count employees in IT department
+SELECT COUNT(*) FROM employees WHERE department = 'IT';
+-- Result: 2
+
+-- Count non-NULL values
+SELECT COUNT(department) FROM employees;
+
+-- Count distinct departments
+SELECT COUNT(DISTINCT department) FROM employees;
+-- Result: 3
+```
+
+---
+
+### SUM()
+Calculates the **total sum** of a numeric column.
+
+```sql
+-- Total salary of all employees
+SELECT SUM(salary) FROM employees;
+-- Result: 273000
+
+-- Total salary by department
+SELECT department, SUM(salary) as total_salary
+FROM employees
+GROUP BY department;
+
+-- Sum with condition
+SELECT SUM(salary) FROM employees WHERE department = 'IT';
+-- Result: 130000
+```
+
+---
+
+### AVG()
+Calculates the **average** value.
+
+```sql
+-- Average salary of all employees
+SELECT AVG(salary) FROM employees;
+-- Result: 54600
+
+-- Average salary by department
+SELECT department, AVG(salary) as avg_salary
+FROM employees
+GROUP BY department;
+
+-- Average salary rounded to 2 decimals
+SELECT ROUND(AVG(salary), 2) as avg_salary FROM employees;
+```
+
+---
+
+### MIN() and MAX()
+Find **minimum** and **maximum** values.
+
+```sql
+-- Lowest and highest salary
+SELECT MIN(salary) as lowest, MAX(salary) as highest
+FROM employees;
+-- Result: 45000 | 70000
+
+-- Find employee with maximum salary
+SELECT * FROM employees 
+WHERE salary = (SELECT MAX(salary) FROM employees);
+-- Result: Charlie
+
+-- Min/Max by department
+SELECT department, MIN(salary) as min_sal, MAX(salary) as max_sal
+FROM employees
+GROUP BY department;
+```
+
+---
+
+### Combining Multiple Aggregates
+
+```sql
+SELECT 
+    department,
+    COUNT(*) as emp_count,
+    SUM(salary) as total_salary,
+    AVG(salary) as avg_salary,
+    MIN(salary) as min_salary,
+    MAX(salary) as max_salary
+FROM employees
+GROUP BY department;
+
+-- Result:
+-- HR    | 2 | 93000  | 46500 | 45000 | 48000
+-- IT    | 2 | 130000 | 65000 | 60000 | 70000
+-- Sales | 1 | 50000  | 50000 | 50000 | 50000
+```
+
+---
+
+## 9) Indexing & Clustered Index
+
+### What is an Index?
+An **index** is a data structure that improves the speed of data retrieval operations on a table.
+
+**Analogy:** Like an index in a book that helps you find topics quickly without reading every page.
+
+**Advantages:**
+- **Faster SELECT** queries (especially with WHERE)
+- **Faster ORDER BY** and **JOIN** operations
+
+**Disadvantages:**
+- **Slower INSERT/UPDATE/DELETE** (index must be updated)
+- **Takes additional storage space**
+
+---
+
+### Creating Indexes
+
+```sql
+CREATE TABLE customers (
+    customer_id INT PRIMARY KEY,
+    name VARCHAR(50),
+    email VARCHAR(50),
+    city VARCHAR(30)
+);
+
+-- Create index on email (frequently searched)
+CREATE INDEX idx_email ON customers(email);
+
+-- Create index on city
+CREATE INDEX idx_city ON customers(city);
+
+-- Create composite index (multiple columns)
+CREATE INDEX idx_name_city ON customers(name, city);
+
+-- Show all indexes on a table
+SHOW INDEX FROM customers;
+
+-- Drop an index
+DROP INDEX idx_city ON customers;
+```
+
+**When to Use Indexes:**
+- Columns used frequently in **WHERE** clause
+- Columns used in **JOIN** conditions
+- Columns used in **ORDER BY**
+- Columns with **high cardinality** (many unique values)
+
+**When NOT to Use Indexes:**
+- Small tables (overhead not worth it)
+- Columns with frequent INSERT/UPDATE/DELETE
+- Columns with **low cardinality** (e.g., gender: M/F)
+
+---
+
+### Clustered Index
+A **clustered index** determines the **physical order** of data in a table.
+
+**Key Points:**
+- **Only ONE** clustered index per table
+- **Primary key** automatically creates a clustered index
+- Data is **physically sorted** by the clustered index column
+- **Faster range queries**
+
+```sql
+-- Primary key automatically creates clustered index
+CREATE TABLE products (
+    product_id INT PRIMARY KEY,  -- Clustered index created here
+    product_name VARCHAR(50),
+    price DECIMAL(10,2)
+);
+
+-- Data is physically stored sorted by product_id
+INSERT INTO products VALUES (5, 'Mouse', 500);
+INSERT INTO products VALUES (2, 'Keyboard', 1500);
+INSERT INTO products VALUES (8, 'Monitor', 15000);
+
+-- Physically stored as: 2, 5, 8 (sorted by product_id)
+```
+
+---
+
+### Non-Clustered Index
+A **non-clustered index** creates a separate structure that points to the actual data.
+
+**Key Points:**
+- Can have **multiple** non-clustered indexes per table
+- Creates a **separate structure** (like book index)
+- Contains **pointers** to actual data rows
+
+```sql
+-- Create non-clustered index
+CREATE INDEX idx_product_name ON products(product_name);
+
+-- Now searches by product_name are faster
+SELECT * FROM products WHERE product_name = 'Mouse';
+```
+
+**Clustered vs Non-Clustered:**
+
+| Feature | Clustered | Non-Clustered |
+|---------|-----------|---------------|
+| Number per table | 1 | Multiple |
+| Physical order | Changes data order | Separate structure |
+| Speed | Faster for range | Slower than clustered |
+| Storage | No extra space | Extra space needed |
+
+**Example: Range Query Performance**
+```sql
+-- With clustered index on product_id
+SELECT * FROM products 
+WHERE product_id BETWEEN 10 AND 50;
+-- Very fast: data already sorted physically
+
+-- With non-clustered index on price
+SELECT * FROM products 
+WHERE price BETWEEN 1000 AND 5000;
+-- Slower: needs to look up pointers, then fetch data
+```
+
+---
+
+## 10) Normalization (1NF, 2NF, 3NF, BCNF)
+
+**Normalization** is the process of organizing data to **reduce redundancy** and improve data integrity.
+
+### Why Normalize?
+- **Eliminate data redundancy** (avoid duplicate data)
+- **Prevent update anomalies**
+- **Save storage space**
+- **Ensure data consistency**
+
+---
+
+### First Normal Form (1NF)
+
+**Rules:**
+1. Each cell contains **only one value** (atomic)
+2. Each row is **unique**
+3. No **repeating groups** of columns
+
+**❌ Not in 1NF:**
+```
+Students Table:
+| student_id | name  | courses                    |
+|------------|-------|----------------------------|
+| 1          | Alice | Math, Physics, Chemistry   |
+| 2          | Bob   | Math, English              |
+```
+Problem: `courses` column has multiple values.
+
+**✅ In 1NF:**
+```
+Students Table:
+| student_id | name  | course     |
+|------------|-------|------------|
+| 1          | Alice | Math       |
+| 1          | Alice | Physics    |
+| 1          | Alice | Chemistry  |
+| 2          | Bob   | Math       |
+| 2          | Bob   | English    |
+```
+
+**Another 1NF Example:**
+
+**❌ Not in 1NF:**
+```
+Orders Table:
+| order_id | customer | items                          |
+|----------|----------|--------------------------------|
+| 1        | John     | Laptop, Mouse                  |
+| 2        | Sarah    | Keyboard, Monitor, Mouse       |
+```
+
+**✅ In 1NF:**
+```
+Orders Table:
+| order_id | customer | item      |
+|----------|----------|-----------|
+| 1        | John     | Laptop    |
+| 1        | John     | Mouse     |
+| 2        | Sarah    | Keyboard  |
+| 2        | Sarah    | Monitor   |
+| 2        | Sarah    | Mouse     |
+```
+
+---
+
+### Second Normal Form (2NF)
+
+**Rules:**
+1. Must be in **1NF**
+2. No **partial dependency** (all non-key columns must depend on the ENTIRE primary key, not just part of it)
+
+This applies when you have a **composite primary key**.
+
+**❌ Not in 2NF:**
+```
+Enrollments Table:
+| student_id | course_id | student_name | course_name | instructor |
+|------------|-----------|--------------|-------------|------------|
+| 1          | 101       | Alice        | Math        | Dr. Smith  |
+| 1          | 102       | Alice        | Physics     | Dr. Jones  |
+| 2          | 101       | Bob          | Math        | Dr. Smith  |
+```
+Primary Key: (student_id, course_id)
+
+Problem:
+- `student_name` depends only on `student_id` (partial dependency)
+- `course_name` and `instructor` depend only on `course_id` (partial dependency)
+
+**✅ In 2NF:**
+```
+Students Table:
+| student_id | student_name |
+|------------|--------------|
+| 1          | Alice        |
+| 2          | Bob          |
+
+Courses Table:
+| course_id | course_name | instructor |
+|-----------|-------------|------------|
+| 101       | Math        | Dr. Smith  |
+| 102       | Physics     | Dr. Jones  |
+
+Enrollments Table:
+| student_id | course_id |
+|------------|-----------|
+| 1          | 101       |
+| 1          | 102       |
+| 2          | 101       |
+```
+
+Now all non-key columns depend on the entire primary key.
+
+---
+
+### Third Normal Form (3NF)
+
+**Rules:**
+1. Must be in **2NF**
+2. No **transitive dependency** (non-key columns should not depend on other non-key columns)
+
+**❌ Not in 3NF:**
+```
+Employees Table:
+| emp_id | name  | dept_id | dept_name | dept_location |
+|--------|-------|---------|-----------|---------------|
+| 1      | Alice | 10      | IT        | Building A    |
+| 2      | Bob   | 20      | HR        | Building B    |
+| 3      | Carol | 10      | IT        | Building A    |
+```
+Primary Key: emp_id
+
+Problem:
+- `dept_name` depends on `dept_id` (not directly on `emp_id`)
+- `dept_location` depends on `dept_id` (transitive dependency)
+
+**✅ In 3NF:**
+```
+Employees Table:
+| emp_id | name  | dept_id |
+|--------|-------|---------|
+| 1      | Alice | 10      |
+| 2      | Bob   | 20      |
+| 3      | Carol | 10      |
+
+Departments Table:
+| dept_id | dept_name | dept_location |
+|---------|-----------|---------------|
+| 10      | IT        | Building A    |
+| 20      | HR        | Building B    |
+```
+
+**Another 3NF Example:**
+
+**❌ Not in 3NF:**
+```
+Books Table:
+| book_id | title       | author_id | author_name | author_country |
+|---------|-------------|-----------|-------------|----------------|
+| 1       | Book A      | 501       | John Doe    | USA            |
+| 2       | Book B      | 502       | Jane Smith  | UK             |
+| 3       | Book C      | 501       | John Doe    | USA            |
+```
+
+`author_name` and `author_country` depend on `author_id`, not directly on `book_id`.
+
+**✅ In 3NF:**
+```
+Books Table:
+| book_id | title  | author_id |
+|---------|--------|-----------|
+| 1       | Book A | 501       |
+| 2       | Book B | 502       |
+| 3       | Book C | 501       |
+
+Authors Table:
+| author_id | author_name | author_country |
+|-----------|-------------|----------------|
+| 501       | John Doe    | USA            |
+| 502       | Jane Smith  | UK             |
+```
+
+---
+
+### Boyce-Codd Normal Form (BCNF)
+
+**Rules:**
+1. Must be in **3NF**
+2. For every functional dependency (X → Y), X must be a **candidate key** (or superkey)
+
+BCNF is stricter than 3NF.
+
+**❌ Not in BCNF (but in 3NF):**
+```
+Teaching Table:
+| professor | course   | department |
+|-----------|----------|------------|
+| Dr. Smith | Math     | Science    |
+| Dr. Jones | Physics  | Science    |
+| Dr. Smith | Biology  | Science    |
+```
+
+Primary Key: (professor, course)
+
+Problem:
+- professor → department (professor determines department)
+- But `professor` is not a candidate key
+
+**✅ In BCNF:**
+```
+Professors Table:
+| professor | department |
+|-----------|------------|
+| Dr. Smith | Science    |
+| Dr. Jones | Science    |
+
+Teaching Table:
+| professor | course  |
+|-----------|---------|
+| Dr. Smith | Math    |
+| Dr. Jones | Physics |
+| Dr. Smith | Biology |
+```
+
+---
+
+### Summary of Normal Forms
+
+| Normal Form | Rule |
+|-------------|------|
+| **1NF** | Atomic values, no repeating groups |
+| **2NF** | 1NF + No partial dependency |
+| **3NF** | 2NF + No transitive dependency |
+| **BCNF** | 3NF + Every determinant is a candidate key |
+
+---
+
+## 11) UNION vs UNION ALL
+
+Both combine results from multiple SELECT statements, but handle duplicates differently.
+
+### UNION
+- Combines results and **removes duplicates**
+- **Slower** (needs to check for duplicates)
+- Columns must have **same data types**
+- Number of columns must be **same**
+
+```sql
+-- Sample tables
+CREATE TABLE employees_2023 (
+    emp_id INT,
+    name VARCHAR(50)
+);
+
+CREATE TABLE employees_2024 (
+    emp_id INT,
+    name VARCHAR(50)
+);
+
+INSERT INTO employees_2023 VALUES (1, 'Alice'), (2, 'Bob'), (3, 'Charlie');
+INSERT INTO employees_2024 VALUES (2, 'Bob'), (3, 'Charlie'), (4, 'Diana');
+
+-- UNION (removes duplicates)
+SELECT * FROM employees_2023
+UNION
+SELECT * FROM employees_2024;
+
+-- Result (4 rows):
+-- 1 | Alice
+-- 2 | Bob
+-- 3 | Charlie
+-- 4 | Diana
+-- Note: Bob and Charlie appear only once
+```
+
+---
+
+### UNION ALL
+- Combines results and **keeps all duplicates**
+- **Faster** (no duplicate checking)
+- Use when you know there are no duplicates or you want to keep them
+
+```sql
+-- UNION ALL (keeps duplicates)
+SELECT * FROM employees_2023
+UNION ALL
+SELECT * FROM employees_2024;
+
+-- Result (7 rows):
+-- 1 | Alice
+-- 2 | Bob
+-- 3 | Charlie
+-- 2 | Bob       (duplicate)
+-- 3 | Charlie   (duplicate)
+-- 4 | Diana
+```
+
+**More Examples:**
+
+```sql
+-- Example 1: Combining different departments
+SELECT name, 'IT' as department FROM it_employees
+UNION
+SELECT name, 'HR' as department FROM hr_employees;
+
+-- Example 2: Combining queries with conditions
+SELECT name FROM employees WHERE salary > 50000
+UNION
+SELECT name FROM contractors WHERE hourly_rate > 30;
+
+-- Example 3: Using ORDER BY (must be at the end)
+SELECT name, salary FROM employees
+UNION
+SELECT name, salary FROM contractors
+ORDER BY salary DESC;
+
+-- Example 4: Count total employees across tables
+SELECT COUNT(*) as total FROM (
+    SELECT emp_id FROM employees_2023
+    UNION ALL
+    SELECT emp_id FROM employees_2024
+) as combined;
+```
+
+**When to Use Which?**
+- Use **UNION** when you want unique results (no duplicates)
+- Use **UNION ALL** when:
+  - You want to keep duplicates
+  - You know there are no duplicates (faster)
+  - You're counting total records
+
+---
+
+## 12) Find Nth Highest Salary
+
+Finding the second highest, third highest, or Nth highest salary is a common interview question.
+
+### Method 1: Using Subquery with MAX()
+
+**Second Highest Salary:**
+```sql
+-- Find second highest salary
+SELECT MAX(salary) as second_highest
+FROM employees
+WHERE salary < (SELECT MAX(salary) FROM employees);
+
+-- Example data:
+-- Salaries: 30000, 45000, 50000, 60000, 70000
+-- Result: 60000
+```
+
+**Third Highest Salary:**
+```sql
+SELECT MAX(salary) as third_highest
+FROM employees
+WHERE salary < (
+    SELECT MAX(salary) FROM employees
+    WHERE salary < (SELECT MAX(salary) FROM employees)
+);
+```
+
+**Limitation:** This gets complex for Nth highest.
+
+---
+
+### Method 2: Using LIMIT and OFFSET
+
+```sql
+-- Second highest salary (works in MySQL, PostgreSQL)
+SELECT DISTINCT salary
+FROM employees
+ORDER BY salary DESC
+LIMIT 1 OFFSET 1;
+
+-- Third highest
+SELECT DISTINCT salary
+FROM employees
+ORDER BY salary DESC
+LIMIT 1 OFFSET 2;
+
+-- Nth highest (replace N-1 in OFFSET)
+SELECT DISTINCT salary
+FROM employees
+ORDER BY salary DESC
+LIMIT 1 OFFSET N-1;
+```
+
+**Explanation:**
+- `ORDER BY salary DESC`: Sort highest to lowest
+- `LIMIT 1`: Get only 1 row
+- `OFFSET 1`: Skip first 1 row (for second highest)
+- `DISTINCT`: Handle duplicate salaries
+
+---
+
+### Method 3: Using DENSE_RANK() (Best for Duplicates)
+
+```sql
+-- Find second highest salary with employee details
+SELECT *
+FROM (
+    SELECT 
+        emp_id,
+        name,
+        salary,
+        DENSE_RANK() OVER (ORDER BY salary DESC) as salary_rank
+    FROM employees
+) as ranked
+WHERE salary_rank = 2;
+
+-- For Nth highest, change WHERE salary_rank = N
+```
+
+**Example:**
+```sql
+-- Sample data
+CREATE TABLE employees (
+    emp_id INT,
+    name VARCHAR(50),
+    salary DECIMAL(10,2)
+);
+
+INSERT INTO employees VALUES
+(1, 'Alice', 70000),
+(2, 'Bob', 60000),
+(3, 'Charlie', 70000),  -- duplicate highest
+(4, 'Diana', 50000),
+(5, 'Eve', 60000);      -- duplicate second highest
+
+-- Using DENSE_RANK
+SELECT 
+    emp_id,
+    name,
+    salary,
+    DENSE_RANK() OVER (ORDER BY salary DESC) as rank
+FROM employees;
+
+-- Result:
+-- emp_id | name    | salary | rank
+-- 1      | Alice   | 70000  | 1
+-- 3      | Charlie | 70000  | 1
+-- 2      | Bob     | 60000  | 2
+-- 5      | Eve     | 60000  | 2
+-- 4      | Diana   | 50000  | 3
+
+-- Get second highest salary employees
+SELECT emp_id, name, salary
+FROM (
+    SELECT 
+        emp_id,
+        name,
+        salary,
+        DENSE_RANK() OVER (ORDER BY salary DESC) as rank
+    FROM employees
+) as ranked
+WHERE rank = 2;
+-- Result: Bob and Eve (both at 60000)
+```
+
+---
+
+### Method 4: Using ROW_NUMBER()
+
+```sql
+-- Get exactly one employee with Nth highest salary
+SELECT emp_id, name, salary
+FROM (
+    SELECT 
+        emp_id,
+        name,
+        salary,
+        ROW_NUMBER() OVER (ORDER BY salary DESC) as row_num
+    FROM employees
+) as numbered
+WHERE row_num = 2;
+```
+
+**Difference: DENSE_RANK vs RANK vs ROW_NUMBER:**
+
+```sql
+-- Sample data with duplicate salaries
+Salaries: 70000, 70000, 60000, 60000, 50000
+
+-- ROW_NUMBER(): 1, 2, 3, 4, 5 (unique numbers, arbitrary for duplicates)
+-- RANK(): 1, 1, 3, 3, 5 (same rank for ties, skips numbers)
+-- DENSE_RANK(): 1, 1, 2, 2, 3 (same rank for ties, no skips)
+```
+
+**Complete Example:**
+```sql
+SELECT 
+    name,
+    salary,
+    ROW_NUMBER() OVER (ORDER BY salary DESC) as row_num,
+    RANK() OVER (ORDER BY salary DESC) as rank,
+    DENSE_RANK() OVER (ORDER BY salary DESC) as dense_rank
+FROM employees;
+
+-- Result:
+-- name    | salary | row_num | rank | dense_rank
+-- Alice   | 70000  | 1       | 1    | 1
+-- Charlie | 70000  | 2       | 1    | 1
+-- Bob     | 60000  | 3       | 3    | 2
+-- Eve     | 60000  | 4       | 3    | 2
+-- Diana   | 50000  | 5       | 5    | 3
+```
+
+---
+
+### Method 5: Creating a Function for Nth Highest
+
+```sql
+-- MySQL Function
+DELIMITER //
+CREATE FUNCTION GetNthHighestSalary(N INT) 
+RETURNS DECIMAL(10,2)
+BEGIN
+    DECLARE result DECIMAL(10,2);
+    SELECT DISTINCT salary INTO result
+    FROM employees
+    ORDER BY salary DESC
+    LIMIT 1 OFFSET N-1;
+    RETURN result;
+END //
+DELIMITER ;
+
+-- Usage
+SELECT GetNthHighestSalary(2); -- Second highest
+SELECT GetNthHighestSalary(5); -- Fifth highest
+```
+
+---
+
+## 13) Views
+
+A **View** is a **virtual table** based on the result of a SQL query. It doesn't store data physically but shows data from one or more tables.
+
+### Why Use Views?
+
+1. **Security**: Hide sensitive columns from users
+2. **Simplicity**: Simplify complex queries
+3. **Consistency**: Ensure users see the same data format
+4. **Abstraction**: Hide underlying table structure
+
+---
+
+### Creating Views
+
+**Basic View:**
+```sql
+-- Create a view showing only public employee information
+CREATE VIEW employee_public AS
+SELECT emp_id, name, department, hire_date
+FROM employees;
+
+-- Use the view like a table
+SELECT * FROM employee_public;
+```
+
+**View with Calculations:**
+```sql
+-- Create view with calculated columns
+CREATE VIEW employee_summary AS
+SELECT 
+    emp_id,
+    name,
+    salary,
+    salary * 0.10 as bonus,
+    salary * 12 as annual_salary
+FROM employees;
+
+SELECT * FROM employee_summary WHERE annual_salary > 500000;
+```
+
+**View with JOIN:**
+```sql
+-- Combine multiple tables in a view
+CREATE VIEW employee_details AS
+SELECT 
+    e.emp_id,
+    e.name,
+    e.salary,
+    d.dept_name,
+    d.location
+FROM employees e
+JOIN departments d ON e.dept_id = d.dept_id;
+
+-- Now users can query easily
+SELECT * FROM employee_details WHERE location = 'New York';
+```
+
+**View with Aggregation:**
+```sql
+-- Department statistics view
+CREATE VIEW department_stats AS
+SELECT 
+    department,
+    COUNT(*) as employee_count,
+    AVG(salary) as avg_salary,
+    MAX(salary) as max_salary,
+    MIN(salary) as min_salary
+FROM employees
+GROUP BY department;
+
+SELECT * FROM department_stats ORDER BY avg_salary DESC;
+```
+
+---
+
+### Modifying Views
+
+```sql
+-- Replace existing view (CREATE OR REPLACE)
+CREATE OR REPLACE VIEW employee_public AS
+SELECT emp_id, name, department, hire_date, email
+FROM employees;
+
+-- Alter view (some databases)
+ALTER VIEW employee_public AS
+SELECT emp_id, name, department
+FROM employees;
+```
+
+---
+
+### Dropping Views
+
+```sql
+-- Delete a view
+DROP VIEW employee_public;
+
+-- Delete if exists
+DROP VIEW IF EXISTS employee_public;
+```
+
+---
+
+### Updating Data Through Views
+
+Some views are **updatable** (you can INSERT/UPDATE/DELETE through them).
+
+**Updatable View Requirements:**
+- Based on a **single table**
+- No **aggregate functions** (SUM, AVG, etc.)
+- No **DISTINCT**, **GROUP BY**, **HAVING**
+- No **UNION**
+
+```sql
+-- Create updatable view
+CREATE VIEW active_employees AS
+SELECT emp_id, name, salary
+FROM employees
+WHERE status = 'Active';
+
+-- Update through view
+UPDATE active_employees 
+SET salary = salary * 1.1 
+WHERE emp_id = 1;
+
+-- This updates the underlying employees table
+
+-- Insert through view
+INSERT INTO active_employees (emp_id, name, salary) 
+VALUES (10, 'New Employee', 50000);
+```
+
+---
+
+### WITH CHECK OPTION
+
+Prevents updates that would make rows invisible to the view.
+
+```sql
+CREATE VIEW high_salary_employees AS
+SELECT emp_id, name, salary
+FROM employees
+WHERE salary > 50000
+WITH CHECK OPTION;
+
+-- This will FAIL because it violates the WHERE condition
+UPDATE high_salary_employees 
+SET salary = 40000 
+WHERE emp_id = 1;
+-- Error: CHECK OPTION failed
+```
+
+---
+
+### Materialized Views (Advanced)
+
+**Materialized View** physically stores the result (unlike regular views).
+
+```sql
+-- PostgreSQL example
+CREATE MATERIALIZED VIEW sales_summary AS
+SELECT 
+    product_id,
+    SUM(quantity) as total_quantity,
+    SUM(amount) as total_sales
+FROM sales
+GROUP BY product_id;
+
+-- Refresh when underlying data changes
+REFRESH MATERIALIZED VIEW sales_summary;
+```
+
+**Regular View vs Materialized View:**
+
+| Feature | Regular View | Materialized View |
+|---------|--------------|-------------------|
+| Storage | No physical storage | Stores data physically |
+| Performance | Slower (executes query each time) | Faster (pre-computed) |
+| Data freshness | Always current | Needs manual refresh |
+| Use case | Simple queries, always current data | Complex queries, acceptable delay |
+
+---
+
+### Practical View Examples
+
+**Example 1: Security - Hide Salary Information**
+```sql
+-- HR can see everything
+CREATE VIEW hr_employee_view AS
+SELECT * FROM employees;
+
+-- Managers can see limited info
+CREATE VIEW manager_employee_view AS
+SELECT emp_id, name, department, hire_date, performance_rating
+FROM employees;
+
+-- General users see minimal info
+CREATE VIEW public_employee_view AS
+SELECT emp_id, name, department
+FROM employees;
+```
+
+**Example 2: Simplify Complex Query**
+```sql
+-- Complex query
+SELECT 
+    o.order_id,
+    c.customer_name,
+    p.product_name,
+    o.quantity,
+    o.quantity * p.price as total_amount
+FROM orders o
+JOIN customers c ON o.customer_id = c.customer_id
+JOIN products p ON o.product_id = p.product_id
+WHERE o.order_date >= '2024-01-01';
+
+-- Create view to simplify
+CREATE VIEW order_details_2024 AS
+SELECT 
+    o.order_id,
+    c.customer_name,
+    p.product_name,
+    o.quantity,
+    o.quantity * p.price as total_amount
+FROM orders o
+JOIN customers c ON o.customer_id = c.customer_id
+JOIN products p ON o.product_id = p.product_id
+WHERE o.order_date >= '2024-01-01';
+
+-- Now simply:
+SELECT * FROM order_details_2024 WHERE customer_name = 'John';
+```
+
+---
+
+## 14) Date and Time Functions
+
+SQL provides various functions to work with dates and times.
+
+### Current Date and Time
+
+```sql
+-- Current date
+SELECT CURRENT_DATE;        -- 2024-11-16
+SELECT CURDATE();           -- MySQL
+
+-- Current time
+SELECT CURRENT_TIME;        -- 14:30:25
+SELECT CURTIME();           -- MySQL
+
+-- Current datetime
+SELECT CURRENT_TIMESTAMP;   -- 2024-11-16 14:30:25
+SELECT NOW();               -- MySQL
+```
+
+---
+
+### Extracting Parts from Date
+
+```sql
+SELECT 
+    YEAR(hire_date) as hire_year,
+    MONTH(hire_date) as hire_month,
+    DAY(hire_date) as hire_day,
+    DAYNAME(hire_date) as day_name,
+    MONTHNAME(hire_date) as month_name
+FROM employees;
+
+-- Result example:
+-- hire_year | hire_month | hire_day | day_name | month_name
+-- 2023      | 5          | 15       | Monday   | May
+```
+
+---
+
+### Date Arithmetic
+
+```sql
+-- Add/Subtract days
+SELECT DATE_ADD('2024-11-16', INTERVAL 7 DAY);     -- 2024-11-23
+SELECT DATE_SUB('2024-11-16', INTERVAL 7 DAY);     -- 2024-11-09
+
+-- Add months
+SELECT DATE_ADD('2024-11-16', INTERVAL 3 MONTH);   -- 2025-02-16
+
+-- Add years
+SELECT DATE_ADD('2024-11-16', INTERVAL 1 YEAR);    -- 2025-11-16
+
+-- Combine intervals
+SELECT DATE_ADD('2024-11-16', INTERVAL '2-3' YEAR_MONTH); -- Add 2 years 3 months
+
+-- Using +/- operator (MySQL)
+SELECT '2024-11-16' + INTERVAL 7 DAY;
+```
+
+---
+
+### Date Difference
+
+```sql
+-- Days between two dates
+SELECT DATEDIFF('2024-11-16', '2024-11-01');  -- 15
+
+-- Find employees' tenure
+SELECT 
+    name,
+    hire_date,
+    DATEDIFF(CURRENT_DATE, hire_date) as days_worked,
+    DATEDIFF(CURRENT_DATE, hire_date) / 365 as years_worked
+FROM employees;
+
+-- Age calculation
+SELECT 
+    name,
+    birth_date,
+    TIMESTAMPDIFF(YEAR, birth_date, CURRENT_DATE) as age
+FROM employees;
+```
+
+---
+
+### Formatting Dates
+
+```sql
+-- Format date as string
+SELECT DATE_FORMAT('2024-11-16', '%d-%m-%Y');      -- 16-11-2024
+SELECT DATE_FORMAT('2024-11-16', '%W, %M %d, %Y'); -- Saturday, November 16, 2024
+SELECT DATE_FORMAT(NOW(), '%H:%i:%s');             -- 14:30:25
+
+-- Common format codes:
+-- %Y: 4-digit year (2024)
+-- %y: 2-digit year (24)
+-- %M: Month name (November)
+-- %m: Month number (11)
+-- %d: Day of month (16)
+-- %W: Weekday name (Saturday)
+-- %H: Hour 24-hour (14)
+-- %h: Hour 12-hour (02)
+-- %i: Minutes (30)
+-- %s: Seconds (25)
+```
+
+---
+
+### Converting String to Date
+
+```sql
+-- Convert string to date
+SELECT STR_TO_DATE('16-11-2024', '%d-%m-%Y');
+-- Result: 2024-11-16
+
+SELECT STR_TO_DATE('November 16, 2024', '%M %d, %Y');
+-- Result: 2024-11-16
+
+SELECT STR_TO_DATE('27102024', '%d%m%Y');
+-- Result: 2024-10-27
+
+-- Using in queries
+UPDATE employees
+SET hire_date = STR_TO_DATE('15/05/2023', '%d/%m/%Y')
+WHERE emp_id = 1;
+```
+
+---
+
+### Practical Date Examples
+
+**Example 1: Find employees hired in last 30 days**
+```sql
+SELECT name, hire_date
+FROM employees
+WHERE hire_date >= DATE_SUB(CURRENT_DATE, INTERVAL 30 DAY);
+```
+
+**Example 2: Birthday reminder**
+```sql
+-- Find employees with birthday this month
+SELECT name, birth_date
+FROM employees
+WHERE MONTH(birth_date) = MONTH(CURRENT_DATE);
+
+-- Birthday in next 7 days
+SELECT name, birth_date
+FROM employees
+WHERE 
+    MONTH(birth_date) = MONTH(CURRENT_DATE)
+    AND DAY(birth_date) BETWEEN DAY(CURRENT_DATE) AND DAY(CURRENT_DATE) + 7;
+```
+
+**Example 3: Calculate age groups**
+```sql
+SELECT 
+    name,
+    birth_date,
+    TIMESTAMPDIFF(YEAR, birth_date, CURRENT_DATE) as age,
+    CASE
+        WHEN TIMESTAMPDIFF(YEAR, birth_date, CURRENT_DATE) < 25 THEN 'Young'
+        WHEN TIMESTAMPDIFF(YEAR, birth_date, CURRENT_DATE) BETWEEN 25 AND 40 THEN 'Mid-Career'
+        ELSE 'Senior'
+    END as age_group
+FROM employees;
+```
+
+**Example 4: Working days calculation**
+```sql
+-- Approximate working days (excluding weekends)
+SELECT 
+    name,
+    hire_date,
+    DATEDIFF(CURRENT_DATE, hire_date) as total_days,
+    DATEDIFF(CURRENT_DATE, hire_date) * 5/7 as approx_working_days
+FROM employees;
+```
+
+---
+
+## 15) Triggers
+
+A **Trigger** is a stored program that automatically executes when a specified event occurs on a table.
+
+### Trigger Events
+- **INSERT**: After/Before inserting new row
+- **UPDATE**: After/Before updating row
+- **DELETE**: After/Before deleting row
+
+---
+
+### Creating Triggers
+
+**Syntax:**
+```sql
+CREATE TRIGGER trigger_name
+{BEFORE | AFTER} {INSERT | UPDATE | DELETE}
+ON table_name
+FOR EACH ROW
+BEGIN
+    -- Trigger logic
+END;
+```
+
+---
+
+### Example 1: Auto-Update Stock
+
+```sql
+-- Tables
+CREATE TABLE books (
+    book_id INT PRIMARY KEY,
+    title VARCHAR(100),
+    available_count INT
+);
+
+CREATE TABLE borrowed_books (
+    borrow_id INT PRIMARY KEY AUTO_INCREMENT,
+    book_id INT,
+    student_id INT,
+    borrow_date DATE
+);
+
+-- Trigger: Decrease stock when book is borrowed
+DELIMITER //
+CREATE TRIGGER decrease_stock
+AFTER INSERT ON borrowed_books
+FOR EACH ROW
+BEGIN
+    UPDATE books
+    SET available_count = available_count - 1
+    WHERE book_id = NEW.book_id;
+END //
+DELIMITER ;
+
+-- Test it
+INSERT INTO books VALUES (1, 'SQL Guide', 10);
+INSERT INTO borrowed_books (book_id, student_id, borrow_date) 
+VALUES (1, 101, '2024-11-16');
+
+SELECT * FROM books WHERE book_id = 1;
+-- available_count is now 9 (automatically updated!)
+```
+
+**Explanation:**
+- `NEW.book_id`: refers to the newly inserted row's book_id
+- Trigger fires automatically after INSERT
+- Updates books table without additional query
+
+---
+
+### Example 2: Prevent Invalid Updates
+
+```sql
+-- Prevent salary decrease
+DELIMITER //
+CREATE TRIGGER prevent_salary_decrease
+BEFORE UPDATE ON employees
+FOR EACH ROW
+BEGIN
+    IF NEW.salary < OLD.salary THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Salary cannot be decreased';
+    END IF;
+END //
+DELIMITER ;
+
+-- Test it
+UPDATE employees SET salary = 60000 WHERE emp_id = 1; -- OK if current > 60000
+-- UPDATE employees SET salary = 30000 WHERE emp_id = 1; -- ERROR: Cannot decrease
+```
+
+**Explanation:**
+- `OLD.salary`: value before update
+- `NEW.salary`: new value being set
+- `SIGNAL`: raises an error and stops the update
+
+---
+
+### Example 3: Audit Log
+
+```sql
+-- Create audit table
+CREATE TABLE employee_audit (
+    audit_id INT PRIMARY KEY AUTO_INCREMENT,
+    emp_id INT,
+    old_salary DECIMAL(10,2),
+    new_salary DECIMAL(10,2),
+    changed_by VARCHAR(50),
+    changed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+-- Trigger: Log salary changes
+DELIMITER //
+CREATE TRIGGER log_salary_change
+AFTER UPDATE ON employees
+FOR EACH ROW
+BEGIN
+    IF OLD.salary <> NEW.salary THEN
+        INSERT INTO employee_audit (emp_id, old_salary, new_salary, changed_by)
+        VALUES (NEW.emp_id, OLD.salary, NEW.salary, USER());
+    END IF;
+END //
+DELIMITER ;
+
+-- Test it
+UPDATE employees SET salary = 65000 WHERE emp_id = 1;
+
+SELECT * FROM employee_audit;
+-- Shows: emp_id=1, old_salary=60000, new_salary=65000, changed_by=root@localhost
+```
+
+---
+
+### Example 4: Cascading Delete
+
+```sql
+-- Tables
+CREATE TABLE customers (
+    customer_id INT PRIMARY KEY,
+    name VARCHAR(50)
+);
+
+CREATE TABLE orders (
+    order_id INT PRIMARY KEY,
+    customer_id INT,
+    order_date DATE
+);
+
+-- Trigger: Delete all orders when customer is deleted
+DELIMITER //
+CREATE TRIGGER delete_customer_orders
+BEFORE DELETE ON customers
+FOR EACH ROW
+BEGIN
+    DELETE FROM orders WHERE customer_id = OLD.customer_id;
+END //
+DELIMITER ;
+
+-- Test it
+DELETE FROM customers WHERE customer_id = 1;
+-- Also deletes all orders for customer_id = 1
+```
+
+---
+
+### Example 5: Auto-Calculate Total
+
+```sql
+-- Tables
+CREATE TABLE order_items (
+    item_id INT PRIMARY KEY AUTO_INCREMENT,
+    order_id INT,
+    product_name VARCHAR(50),
+    quantity INT,
+    price DECIMAL(10,2),
+    total DECIMAL(10,2)  -- This will be auto-calculated
+);
+
+-- Trigger: Calculate total before insert
+DELIMITER //
+CREATE TRIGGER calculate_total
+BEFORE INSERT ON order_items
+FOR EACH ROW
+BEGIN
+    SET NEW.total = NEW.quantity * NEW.price;
+END //
+DELIMITER ;
+
+-- Test it
+INSERT INTO order_items (order_id, product_name, quantity, price)
+VALUES (1, 'Laptop', 2, 50000);
+
+SELECT * FROM order_items;
+-- total is automatically set to 100000
+```
+
+---
+
+### Viewing and Dropping Triggers
+
+```sql
+-- Show all triggers
+SHOW TRIGGERS;
+
+-- Show triggers for specific table
+SHOW TRIGGERS WHERE `table` = 'employees';
+
+-- Drop trigger
+DROP TRIGGER IF EXISTS decrease_stock;
+```
+
+---
+
+### NEW vs OLD Keywords
+
+| Event | NEW | OLD |
+|-------|-----|-----|
+| **INSERT** | ✓ Available | ✗ Not available |
+| **UPDATE** | ✓ Available (new values) | ✓ Available (old values) |
+| **DELETE** | ✗ Not available | ✓ Available |
+
+---
+
+### BEFORE vs AFTER Triggers
+
+**BEFORE Trigger:**
+- Can **modify** NEW values
+- Can **prevent** the operation (using SIGNAL)
+- Used for **validation** and **preprocessing**
+
+```sql
+DELIMITER //
+CREATE TRIGGER validate_age
+BEFORE INSERT ON employees
+FOR EACH ROW
+BEGIN
+    IF NEW.age < 18 THEN
+        SIGNAL SQLSTATE '45000'
+        SET MESSAGE_TEXT = 'Employee must be at least 18 years old';
+    END IF;
+    
+    -- Can modify NEW values
+    SET NEW.name = UPPER(NEW.name);
+END //
+DELIMITER ;
+```
+
+**AFTER Trigger:**
+- **Cannot modify** NEW values (already committed)
+- Used for **logging**, **auditing**, **cascading** changes
+
+```sql
+DELIMITER //
+CREATE TRIGGER log_new_employee
+AFTER INSERT ON employees
+FOR EACH ROW
+BEGIN
+    INSERT INTO employee_log (emp_id, action, action_date)
+    VALUES (NEW.emp_id, 'New employee added', NOW());
+END //
+DELIMITER ;
+```
+
+---
+
+### Practical Use Cases for Triggers
+
+1. **Maintain data consistency** (update related tables)
+2. **Enforce business rules** (prevent invalid data)
+3. **Audit trails** (log all changes)
+4. **Calculated columns** (auto-calculate values)
+5. **Cascading operations** (delete/update related records)
+6. **Notifications** (insert into notification table)
+7. **Data validation** (check constraints beyond CHECK)
+
+---
+
+## 16) Stored Procedures
+
+A **Stored Procedure** is a prepared SQL code that you can save and reuse.
+
+### Creating Stored Procedures
+
+**Basic Syntax:**
+```sql
+DELIMITER //
+CREATE PROCEDURE procedure_name(parameters)
+BEGIN
+    -- SQL statements
+END //
+DELIMITER ;
+```
+
+---
+
+### Example 1: Simple Procedure
+
+```sql
+-- Procedure without parameters
+DELIMITER //
+CREATE PROCEDURE GetAllEmployees()
+BEGIN
+    SELECT * FROM employees;
+END //
+DELIMITER ;
+
+-- Call the procedure
+CALL GetAllEmployees();
+```
+
+---
+
+### Example 2: Procedure with IN Parameters
+
+```sql
+-- Get employees by department
+DELIMITER //
+CREATE PROCEDURE GetEmployeesByDept(IN dept_name VARCHAR(50))
+BEGIN
+    SELECT * FROM employees
+    WHERE department = dept_name;
+END //
+DELIMITER ;
+
+-- Call with parameter
+CALL GetEmployeesByDept('IT');
+CALL GetEmployeesByDept('HR');
+```
+
+---
+
+### Example 3: Procedure with OUT Parameters
+
+```sql
+-- Get total salary for a department
+DELIMITER //
+CREATE PROCEDURE GetDeptTotalSalary(
+    IN dept_name VARCHAR(50),
+    OUT total_salary DECIMAL(12,2)
+)
+BEGIN
+    SELECT SUM(salary) INTO total_salary
+    FROM employees
+    WHERE department = dept_name;
+END //
+DELIMITER ;
+
+-- Call and get output
+CALL GetDeptTotalSalary('IT', @total);
+SELECT @total as total_salary;
+```
+
+---
+
+### Example 4: Procedure with INOUT Parameters
+
+```sql
+-- Add bonus to salary
+DELIMITER //
+CREATE PROCEDURE AddBonus(
+    INOUT salary DECIMAL(10,2),
+    IN bonus_percent DECIMAL(5,2)
+)
+BEGIN
+    SET salary = salary + (salary * bonus_percent / 100);
+END //
+DELIMITER ;
+
+-- Usage
+SET @emp_salary = 50000;
+CALL AddBonus(@emp_salary, 10);  -- Add 10% bonus
+SELECT @emp_salary;  -- Result: 55000
+```
+
+---
+
+### Example 5: Procedure with Logic
+
+```sql
+-- Give raise based on performance
+DELIMITER //
+CREATE PROCEDURE GiveRaise(IN emp_id INT)
+BEGIN
+    DECLARE current_salary DECIMAL(10,2);
+    DECLARE years_worked INT;
+    DECLARE new_salary DECIMAL(10,2);
+    
+    -- Get current salary and tenure
+    SELECT salary, TIMESTAMPDIFF(YEAR, hire_date, CURRENT_DATE)
+    INTO current_salary, years_worked
+    FROM employees
+    WHERE emp_id = emp_id;
+    
+    -- Calculate raise
+    IF years_worked >= 5 THEN
+        SET new_salary = current_salary * 1.15;  -- 15% raise
+    ELSEIF years_worked >= 3 THEN
+        SET new_salary = current_salary * 1.10;  -- 10% raise
+    ELSE
+        SET new_salary = current_salary * 1.05;  -- 5% raise
+    END IF;
+    
+    -- Update salary
+    UPDATE employees
+    SET salary = new_salary
+    WHERE emp_id = emp_id;
+    
+    SELECT CONCAT('Salary updated to ', new_salary) as message;
+END //
+DELIMITER ;
+
+-- Call
+CALL GiveRaise(1);
+```
+
+---
+
+This comprehensive guide covers all major SQL concepts with detailed examples. Practice these queries and concepts to master SQL for interviews!

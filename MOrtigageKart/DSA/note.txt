@@ -1,0 +1,7 @@
+1.  Gas Station Problem (Find the starting index for a circular gas station route with costs)    Medium   LeetCode #134
+
+2. Run Length Encoding (Compress a string, e.g., "aaabb" → "a3b2")Easy
+
+3. valid parenthesis leetcode20
+
+4.convert number to binary number.
