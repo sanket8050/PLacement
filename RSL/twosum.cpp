@@ -12,6 +12,7 @@ vector<int> find(vector<int>&arr,int target){
             return {mp[comp],i};
         }
 
+        
         mp[arr[i]] = i;
     }
     return {} ; // if noe pair found
